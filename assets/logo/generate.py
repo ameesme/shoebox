@@ -10,7 +10,7 @@ from fontTools.pens.svgPathPen import SVGPathPen
 from fontTools.pens.transformPen import TransformPen
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else __import__("os").path.dirname(__file__)
-N = 112                      # dither grid size (pixels across the mark)
+N = int(__import__("os").environ.get("LOGO_GRID", 56))  # dither pixels across the mark
 SS = 4                       # supersample for face masks
 
 # ---- isometric geometry -------------------------------------------------
@@ -90,8 +90,8 @@ def bayer(n):
         return np.array([[0]])
     b = bayer(n // 2)
     return np.block([[4 * b, 4 * b + 2], [4 * b + 3, 4 * b + 1]])
-B = (bayer(8) + 0.5) / 64
-thr = np.tile(B, (N // 8 + 1, N // 8 + 1))[:N, :N]
+B = (bayer(4) + 0.5) / 16
+thr = np.tile(B, (N // 4 + 1, N // 4 + 1))[:N, :N]
 ink = t < thr
 
 # crisp 1px outline around each face edge (silhouette + lid seam)
@@ -153,7 +153,7 @@ def svg(fg, bg, layout):
                 f'<path fill="{fg}" d="{word}"/>')
     bgrect = f'<rect width="{w}" height="{h}" fill="{bg}"/>' if bg else ""
     return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" '
-            f'width="{w*4}" height="{h*4}" shape-rendering="crispEdges">'
+            f'width="{round(w*448/N)}" height="{round(h*448/N)}" shape-rendering="crispEdges">'
             f'<title>shoebox</title>{bgrect}{body}</svg>\n')
 
 for name, fg, bg, layout in [
