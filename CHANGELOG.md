@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Every finished or blocked task file ends with a `Session:` line that
+  points to the Pi session of its latest attempt, or says no session was
+  saved when Pi exited before it started.
+
 ## 0.4.0
 
 ### Breaking changes
