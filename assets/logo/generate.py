@@ -147,7 +147,7 @@ def svg(fg, bg, layout):
         body = f'<path fill="{fg}" d="{mark_path}"/>'
     else:
         size = N * 0.40
-        word, end = text_path("shoebox", size, N + N * 0.04, N * 0.64)
+        word, end = text_path("shoebox", size, N + N * 0.16, N * 0.64)
         w, h = math.ceil(end + N * 0.08), N
         body = (f'<path fill="{fg}" d="{mark_path}" shape-rendering="crispEdges"/>'
                 f'<path fill="{fg}" d="{word}"/>')
