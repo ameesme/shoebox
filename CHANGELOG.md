@@ -1,12 +1,14 @@
 # Changelog
 
-## Unreleased
+## 0.5.0
 
 ### Added
 
 - Every finished or blocked task file ends with a `Session:` line that
   points to the Pi session of its latest attempt, or says no session was
   saved when Pi exited before it started.
+- shoebox has a logo, shown at the top of the README and in the overview
+  illustration.
 
 ## 0.4.0
 
