@@ -42,15 +42,6 @@ send() {
 }
 
 transcribe() (
-    key=${TELEGRAM_TRANSCRIPTION_API_KEY:-${OPENAI_API_KEY:-}}
-    if [ -z "$key" ]; then
-        for credentials in /data/shared/.env /data/agents/main/.env; do
-            [ -f "$credentials" ] || continue
-            value=$(awk '/^OPENAI_API_KEY=/ {sub(/^OPENAI_API_KEY=/, ""); key=$0} END {print key}' "$credentials")
-            [ -z "$value" ] || key=$value
-        done
-    fi
-    [ -n "$key" ] || { echo 'Voice notes need OPENAI_API_KEY or TELEGRAM_TRANSCRIPTION_API_KEY configured.'; exit 1; }
     size=$(printf '%s' "$1" | jq '.message | (.voice // .audio).file_size // 0')
     [ "$size" -le 20000000 ] || { echo 'Please send a recording under 20 MB.'; exit 1; }
     file=$(printf '%s' "$1" | jq -c '.message | (.voice // .audio) | {file_id}')
@@ -70,10 +61,14 @@ transcribe() (
         "https://api.telegram.org/file/bot$TELEGRAM_BOT_TOKEN/$path" -o "$temporary/audio.$extension" 2>/dev/null; then
         echo 'Could not download that recording. Please try again.'; exit 1
     fi
-    if result=$(curl -fsS --max-time 120 https://api.openai.com/v1/audio/transcriptions \
-        -H "Authorization: Bearer $key" \
-        --form-string "model=${TELEGRAM_TRANSCRIPTION_MODEL:-gpt-transcribe}" \
-        -F "file=@$temporary/audio.$extension" 2>/dev/null) && \
+    status=0
+    result=$(TRANSCRIPTION_API_KEY=${TELEGRAM_TRANSCRIPTION_API_KEY:-} \
+        sh "$(dirname "$0")/transcribe.sh" "$temporary/audio.$extension" \
+        "${TELEGRAM_TRANSCRIPTION_MODEL:-gpt-transcribe}") || status=$?
+    if [ "$status" -eq 78 ]; then
+        echo 'Voice notes need OPENAI_API_KEY or TELEGRAM_TRANSCRIPTION_API_KEY configured.'; exit 1
+    fi
+    if [ "$status" -eq 0 ] && \
         transcript=$(printf '%s' "$result" | jq -er '.text | select(type == "string" and test("\\S"))'); then
         printf '%s\n' "$transcript"
     else
@@ -148,7 +143,7 @@ help='Send a message or voice note to chat with main. Audio recordings are trans
 /help — show this help
 /start — show this help
 
-Voice notes need an OpenAI API key configured on the server.'
+Voice notes need OPENAI_API_KEY or TELEGRAM_TRANSCRIPTION_API_KEY configured on the server.'
 while :; do
     poll=$(printf '{"offset":%s,"timeout":5}' "$offset")
     if ! updates=$(telegram getUpdates "$poll"); then
