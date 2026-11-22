@@ -121,7 +121,10 @@ def runs(mat):
 
 mark_path = runs(ink)
 box = down(alpha) > 0.5
-mark_path_dark = runs((~ink & box) | outline)
+# visible box interior (the gap under the lifted lid) stays dark in the white variant
+lid = mask(lid_top) + mask(lid_front) + mask(lid_side)
+gap = down(mask(body_top) * (lid == 0)) > 0.5
+mark_path_dark = runs(((~ink & box) | outline) & ~gap)
 
 # ---- wordmark ----------------------------------------------------------
 font = TTFont("/usr/share/fonts/opentype/inter/InterDisplay-Bold.otf")
