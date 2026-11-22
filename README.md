@@ -1,4 +1,8 @@
-# shoebox
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/logo/logo-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="assets/logo/logo.svg">
+  <img alt="shoebox" src="assets/logo/logo.svg" width="320">
+</picture>
 
 Crazy simple filesystem-based AI agent orchestration.
 
