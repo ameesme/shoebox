@@ -131,6 +131,8 @@ curl http://127.0.0.1:8081/cgi-bin/audio \
 
 It replies `202` once the recording is transcribed and main takes it from there; follow along in the web channel. Transcription uses `AUDIO_WEBHOOK_TRANSCRIPTION_API_KEY` or your `OPENAI_API_KEY`, with `AUDIO_WEBHOOK_TRANSCRIPTION_MODEL` defaulting to `gpt-transcribe`. The port (`AUDIO_WEBHOOK_PORT`, 8081) is only published on localhost, so put a TLS reverse proxy in front to reach it from another device.
 
+To also get each transcript and main's reply in Telegram, set `AUDIO_WEBHOOK_TELEGRAM_CHAT` to one of your `TELEGRAM_CHAT_IDS` and run both channels: `CHANNEL_COMMAND=sh /channels/audio-webhook.sh sh /channels/telegram.sh`.
+
 ## Compared to others
 
 shoebox does a lot with very little code. Docker, git and Pi do the heavy lifting, so there's no database, gateway or agent loop to maintain. That's about 1.4k lines, idling at under 100 MB. If you want an assistant in every chat app, look at [OpenClaw][openclaw] or [Hermes Agent][hermes]. For a full workspace with email, documents and local models, look at [Odysseus][odysseus].

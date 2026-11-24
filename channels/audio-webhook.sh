@@ -3,10 +3,14 @@
 set -eu
 token=${AUDIO_WEBHOOK_TOKEN:-}
 conversation=audio-${AUDIO_WEBHOOK_CONVERSATION:-}
+telegram=${AUDIO_WEBHOOK_TELEGRAM_CHAT:-}
 
 if [ -z "${GATEWAY_INTERFACE:-}" ]; then
     case "$conversation" in
         audio-|*[!a-zA-Z0-9_-]*) echo 'Set AUDIO_WEBHOOK_CONVERSATION to letters, digits, _ or -' >&2; exit 1 ;;
+    esac
+    case "$telegram" in
+        *[!0-9-]*) echo 'Set AUDIO_WEBHOOK_TELEGRAM_CHAT to a Telegram chat id' >&2; exit 1 ;;
     esac
     [ "${#token}" -ge 32 ] || { echo 'Set AUDIO_WEBHOOK_TOKEN to at least 32 characters' >&2; exit 1; }
     # busybox httpd only runs CGI scripts from a cgi-bin folder.
@@ -20,6 +24,15 @@ fi
 reply() {
     printf 'Status: %s\r\nContent-Length: 0\r\n\r\n' "$1"
     exit 0
+}
+
+# The Telegram channel delivers outbox files, like it does for task updates.
+report() {
+    [ -n "$telegram" ] || return 0
+    outbox=/run/shoebox/outbox/telegram-$telegram-audio
+    mkdir -p "$outbox"
+    printf '%s\n' "$2" > "$outbox/.$$-$1.tmp"
+    mv "$outbox/.$$-$1.tmp" "$outbox/$(date +%s)-$$-$1.txt"
 }
 
 # Compare digests so a mismatch does not leak how much of the token was right.
@@ -47,6 +60,10 @@ transcript=$(curl -q -fsS --max-time 120 https://api.openai.com/v1/audio/transcr
     -F "file=@$audio" 2>/dev/null | jq -er '.text | select(type == "string" and test("\\S"))') || reply 502
 rm -rf "$temporary"
 
-# The prefix stops Pi from running a transcript that starts with a /command.
-printf 'Audio transcript:\n%s' "$transcript" | chat-main "$conversation" >/dev/null 2>&1 &
+report 1 "🎙 *“$transcript”*" || true
+{
+    # The prefix stops Pi from running a transcript that starts with a /command.
+    response=$(printf 'Audio transcript:\n%s' "$transcript" | chat-main "$conversation") || response='main unreachable'
+    report 2 "$response"
+} >/dev/null 2>&1 &
 reply 202
