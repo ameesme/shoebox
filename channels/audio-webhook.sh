@@ -16,7 +16,8 @@ if [ -z "${GATEWAY_INTERFACE:-}" ]; then
     # busybox httpd only runs CGI scripts from a cgi-bin folder.
     mkdir -p /run/shoebox/audio-webhook/cgi-bin
     ln -sf "$(readlink -f "$0")" /run/shoebox/audio-webhook/cgi-bin/audio
-    httpd -p "${AUDIO_WEBHOOK_PORT:-8081}" -h /run/shoebox/audio-webhook
+    # Skip /etc/httpd.conf: the Home Assistant image limits it to the ingress proxy.
+    httpd -p "${AUDIO_WEBHOOK_PORT:-8081}" -h /run/shoebox/audio-webhook -c /dev/null
     [ "$#" -eq 0 ] || exec "$@"
     exit 0
 fi
@@ -43,6 +44,7 @@ case "$length" in ''|0|*[!0-9]*) reply 411 ;; esac
 case "${CONTENT_TYPE:-}" in
     audio/wav*) extension=wav ;;
     audio/ogg*) extension=ogg ;;
+    audio/mp4*) extension=m4a ;;
     *) reply 415 ;;
 esac
 
