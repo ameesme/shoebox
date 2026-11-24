@@ -33,7 +33,12 @@ fi
 TELEGRAM_BOT_TOKEN=$(jq -r '.telegram_bot_token // ""' /data/options.json)
 TELEGRAM_CHAT_IDS=$(jq -r '.telegram_chat_ids // ""' /data/options.json)
 export TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_IDS
+AUDIO_WEBHOOK_TOKEN=$(jq -r '.audio_webhook_token // ""' /data/options.json)
+AUDIO_WEBHOOK_TELEGRAM_CHAT=$(jq -r '.audio_webhook_telegram_chat // ""' /data/options.json)
+export AUDIO_WEBHOOK_TOKEN AUDIO_WEBHOOK_TELEGRAM_CHAT AUDIO_WEBHOOK_CONVERSATION=home-assistant
 set -- sh /channels/web.sh
+# Telegram never returns, so the audio webhook has to start before it.
+[ -z "$AUDIO_WEBHOOK_TOKEN" ] || set -- "$@" sh /channels/audio-webhook.sh
 if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
     if [ -z "$TELEGRAM_CHAT_IDS" ]; then
         echo 'Set telegram_chat_ids before enabling Telegram.' >&2

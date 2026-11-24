@@ -1,7 +1,7 @@
 FROM docker:28-dind AS source
 RUN apk add --no-cache git
 # Pin the core independently of the Home Assistant packaging version.
-ARG SHOEBOX_REF=v0.5.0
+ARG SHOEBOX_REF=v0.6.0
 RUN git init /source \
     && git -C /source fetch --depth 1 https://github.com/ameesme/shoebox.git "$SHOEBOX_REF" \
     && git -C /source checkout FETCH_HEAD \

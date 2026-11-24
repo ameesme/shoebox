@@ -1,5 +1,5 @@
 name: shoebox
-version: "0.5.0"
+version: "0.6.0"
 slug: shoebox
 description: Filesystem-based orchestration for AI agents
 url: https://github.com/ameesme/shoebox
@@ -28,9 +28,13 @@ options:
   environment: []
   telegram_bot_token: ""
   telegram_chat_ids: ""
+  audio_webhook_token: ""
+  audio_webhook_telegram_chat: ""
 schema:
   environment:
     - name: match(^[A-Za-z_][A-Za-z0-9_]*$)
       value: password
   telegram_bot_token: password
   telegram_chat_ids: str
+  audio_webhook_token: password?
+  audio_webhook_telegram_chat: str?

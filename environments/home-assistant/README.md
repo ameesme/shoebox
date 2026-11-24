@@ -43,3 +43,10 @@ Telegram is optional; leave both Telegram fields empty to run only scheduled
 tasks. The shoebox sidebar panel has per-agent chat and a file explorer for
 agent and shared files, behind Home Assistant's login. The existing Compose installation
 and CLI continue to work as before.
+
+To let Home Assistant post recordings to main, set `audio_webhook_token` to a
+random token of at least 32 characters and POST WAV, Ogg or m4a (`audio/mp4`)
+with `Authorization: Bearer <token>` to `http://<app hostname>:8081/cgi-bin/audio`.
+The port is only reachable from inside Home Assistant. Uploads go to main's
+`audio-home-assistant` session; set `audio_webhook_telegram_chat` to one of your
+`telegram_chat_ids` to also get each transcript and reply in Telegram.
