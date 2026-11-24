@@ -120,7 +120,7 @@ To let a trusted device send recordings to `main`, update the root `.env` by set
 - `AUDIO_WEBHOOK_TOKEN`, a random token of at least 32 characters, like `openssl rand -hex 32`
 - `AUDIO_WEBHOOK_CONVERSATION`, like `recorder` to send every upload to main's `audio-recorder` session
 
-and running `docker compose up -d`. Then post a WAV or Ogg recording of up to 20 MB:
+and running `docker compose up -d`. Then post a WAV, Ogg or m4a (`audio/mp4`) recording of up to 20 MB:
 
 ```sh
 curl http://127.0.0.1:8081/cgi-bin/audio \
