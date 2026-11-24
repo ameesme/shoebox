@@ -114,30 +114,22 @@ To change the port, you can set `WEB_PORT`. To combine with Telegram, just conca
 In the web-interface, you can chat with any agent. Other channels' conversations, such as Telegram, are shown read-only. Files browses agent and shared files, with upload, download and delete, including `.env` files.
 
 ### Audio upload webhook
-
-To let a trusted device send recordings to `main`, set these in the root `.env`:
-
-- `CHANNEL_COMMAND=python3 /channels/audio-webhook.py`
+To let a trusted device send recordings to `main`, update the root `.env` by setting
+- `CHANNEL_COMMAND=sh /channels/audio-webhook.sh`
 - `COMPOSE_FILE=compose.yaml:compose.audio-webhook.yaml`
-- `AUDIO_WEBHOOK_TOKEN`: a dedicated random bearer token (generate one with `openssl rand -hex 32`).
-- `AUDIO_WEBHOOK_CONVERSATION`: a fixed name for this caller (1–64 ASCII letters, digits, underscores or hyphens). A name such as `recorder` routes every upload to Main's `audio-recorder` session. The client cannot select the user, agent or session.
-- `AUDIO_WEBHOOK_TRANSCRIPTION_API_KEY` (optional): a dedicated OpenAI key. Falls back to `OPENAI_API_KEY` in the root environment, then Main's or the shared `.env`. `AUDIO_WEBHOOK_TRANSCRIPTION_MODEL` defaults to `gpt-transcribe`.
+- `AUDIO_WEBHOOK_TOKEN`, a random token of at least 32 characters, like `openssl rand -hex 32`
+- `AUDIO_WEBHOOK_CONVERSATION`, like `recorder` to send every upload to main's `audio-recorder` session
 
-Run `docker compose up -d --build`. The default host port is 8081, published on loopback only. To allow access from another device, use a trusted TLS reverse proxy with request size and timeout limits and no request-body or authorization-header logging. Give the token only to a caller you would trust to chat with Main directly.
+and running `docker compose up -d`. Then post a WAV or Ogg recording of up to 20 MB:
 
 ```sh
-# Set AUDIO_WEBHOOK_TOKEN locally to the same value configured on the server.
-curl --fail-with-body http://127.0.0.1:8081/audio \
+curl http://127.0.0.1:8081/cgi-bin/audio \
   -H "Authorization: Bearer $AUDIO_WEBHOOK_TOKEN" \
   -H 'Content-Type: audio/wav' \
   --data-binary @recording.wav
 ```
 
-Send a raw PCM WAV (`audio/wav`) or Ogg Opus (`audio/ogg`) body with `Content-Length` and no content encoding, up to 20,000,000 bytes. Uploads are handled one at a time. The response is `204` after Main handles the message; there is no chat reply in the HTTP response. Chat history and later task updates can be viewed in that session through the optional web channel. To enable both, use `COMPOSE_FILE=compose.yaml:compose.web.yaml:compose.audio-webhook.yaml` and `CHANNEL_COMMAND=sh /channels/web.sh python3 /channels/audio-webhook.py`.
-
-Missing or invalid credentials return `401`; invalid, oversized or unsupported uploads return `400`, `411`, `413` or `415`. A failed transcription returns `502` without sending a message. A chat failure returns `503`; retrying may duplicate a turn that already reached Main.
-
-Audio is sent to OpenAI for transcription and the temporary upload is deleted after processing. The webhook does not log recordings or transcripts. Transcripts are stored as ordinary user messages in the Main session, just like typed chat; spoken slash commands are not interpreted as channel commands.
+It replies `202` once the recording is transcribed and main takes it from there; follow along in the web channel. Transcription uses `AUDIO_WEBHOOK_TRANSCRIPTION_API_KEY` or your `OPENAI_API_KEY`, with `AUDIO_WEBHOOK_TRANSCRIPTION_MODEL` defaulting to `gpt-transcribe`. The port (`AUDIO_WEBHOOK_PORT`, 8081) is only published on localhost, so put a TLS reverse proxy in front to reach it from another device.
 
 ## Compared to others
 
