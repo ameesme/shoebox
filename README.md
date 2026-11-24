@@ -17,7 +17,7 @@ Crazy simple filesystem-based AI agent orchestration.
   - Persistent workspace
 - Pi as harness
 - Automatic git versioning for agent definitions, skills, schedules and memory
-- Terminal UI, and optional web and Telegram channels
+- Terminal UI, and optional web, Telegram and audio upload channels
 - Main restarts shoebox to apply changes to agents, after you confirm
 
 ## In a nutshell
@@ -112,6 +112,26 @@ To change the port, you can set `WEB_PORT`. To combine with Telegram, just conca
 `CHANNEL_COMMAND=sh /channels/web.sh sh /channels/telegram.sh`
 
 In the web-interface, you can chat with any agent. Other channels' conversations, such as Telegram, are shown read-only. Files browses agent and shared files, with upload, download and delete, including `.env` files.
+
+### Audio upload webhook
+To let a trusted device send recordings to `main`, update the root `.env` by setting
+- `CHANNEL_COMMAND=sh /channels/audio-webhook.sh`
+- `COMPOSE_FILE=compose.yaml:compose.audio-webhook.yaml`
+- `AUDIO_WEBHOOK_TOKEN`, a random token of at least 32 characters, like `openssl rand -hex 32`
+- `AUDIO_WEBHOOK_CONVERSATION`, like `recorder` to send every upload to main's `audio-recorder` session
+
+and running `docker compose up -d`. Then post a WAV or Ogg recording of up to 20 MB:
+
+```sh
+curl http://127.0.0.1:8081/cgi-bin/audio \
+  -H "Authorization: Bearer $AUDIO_WEBHOOK_TOKEN" \
+  -H 'Content-Type: audio/wav' \
+  --data-binary @recording.wav
+```
+
+It replies `202` once the recording is transcribed and main takes it from there; follow along in the web channel. Transcription uses `AUDIO_WEBHOOK_TRANSCRIPTION_API_KEY` or your `OPENAI_API_KEY`, with `AUDIO_WEBHOOK_TRANSCRIPTION_MODEL` defaulting to `gpt-transcribe`. The port (`AUDIO_WEBHOOK_PORT`, 8081) is only published on localhost, so put a TLS reverse proxy in front to reach it from another device.
+
+To also get each transcript and main's reply in Telegram, set `AUDIO_WEBHOOK_TELEGRAM_CHAT` to one of your `TELEGRAM_CHAT_IDS` and run both channels: `CHANNEL_COMMAND=sh /channels/audio-webhook.sh sh /channels/telegram.sh`.
 
 ## Compared to others
 

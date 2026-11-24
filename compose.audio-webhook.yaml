@@ -1,0 +1,4 @@
+services:
+  agents:
+    ports:
+      - "127.0.0.1:${AUDIO_WEBHOOK_PORT:-8081}:${AUDIO_WEBHOOK_PORT:-8081}"
