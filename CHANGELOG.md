@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0
+
+### Added
+
+- An optional audio webhook channel lets a trusted device post a recording
+  to main. It transcribes WAV, Ogg or m4a, replies `202` without waiting
+  for main's turn, and can report each transcript and main's reply to a
+  Telegram chat.
+
 ## 0.5.0
 
 ### Added
