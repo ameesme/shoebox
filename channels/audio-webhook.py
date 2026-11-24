@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""A single-credential audio ingress channel for Main."""
+# Audio webhook channel: transcribe authenticated uploads and send them to Main.
 import hmac
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
@@ -15,8 +15,22 @@ import wave
 
 MAX_BYTES = 20_000_000
 UPLOAD_SECONDS = 30
-TRANSCRIBE = Path(__file__).with_name('transcribe.sh')
 FORMATS = {'audio/wav': 'wav', 'audio/ogg': 'ogg'}
+
+
+def openai_key(key):
+    key = key or os.environ.get('OPENAI_API_KEY', '')
+    if key:
+        return key
+    for credentials in ('/data/shared/.env', '/data/agents/main/.env'):
+        try:
+            lines = Path(credentials).read_text().splitlines()
+        except OSError:
+            continue
+        values = [line.removeprefix('OPENAI_API_KEY=') for line in lines if line.startswith('OPENAI_API_KEY=')]
+        if values and values[-1]:
+            key = values[-1]
+    return key
 
 
 def supported(path, extension):
@@ -30,8 +44,7 @@ def supported(path, extension):
                 return len(audio.readframes(1)) == audio.getnchannels() * audio.getsampwidth()
         except (EOFError, RuntimeError, wave.Error):
             return False
-    # Check that the first Ogg page begins an Opus stream. The provider decodes
-    # the recording; this check rejects mislabeled files before sending them.
+    # Reject mislabeled files before upload: the first Ogg page must begin an Opus stream.
     with path.open('rb') as audio:
         header = audio.read(27)
         if len(header) != 27 or not header.startswith(b'OggS\x00\x02') or not header[26]:
@@ -104,8 +117,14 @@ class Webhook(BaseHTTPRequestHandler):
                     remaining -= len(chunk)
             if not supported(path, extension):
                 return self.reply(415)
+            key = openai_key(self.server.api_key)
+            if not key:
+                return self.reply(502)
             try:
-                result = subprocess.run(['sh', TRANSCRIBE, path, self.server.model],
+                result = subprocess.run(['curl', '-q', '-fsS', '--max-time', '120',
+                                         'https://api.openai.com/v1/audio/transcriptions',
+                                         '-H', f'Authorization: Bearer {key}',
+                                         '--form-string', f'model={self.server.model}', '-F', f'file=@{path}'],
                                         stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                         stderr=subprocess.DEVNULL, check=True, timeout=125)
                 text = json.loads(result.stdout)['text']
@@ -119,8 +138,7 @@ class Webhook(BaseHTTPRequestHandler):
             except UnicodeError:
                 return self.reply(502)
 
-        # Same stdin path as typed chat; never parse channel commands, flags,
-        # identities or roles out of a transcript (or an HTTP request).
+        # Same stdin path as typed chat; never parse commands or identities out of a transcript.
         try:
             subprocess.run(['chat-main', self.server.conversation], input=message,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
@@ -145,9 +163,10 @@ def main():
     if not re.fullmatch(r'[a-zA-Z0-9_-]{32,}', token) or not re.fullmatch(r'[a-zA-Z0-9_-]{1,64}', name):
         raise SystemExit('audio webhook: set a valid AUDIO_WEBHOOK_TOKEN and AUDIO_WEBHOOK_CONVERSATION')
     signal.signal(signal.SIGTERM, stop)
-    os.environ['TRANSCRIPTION_API_KEY'] = os.environ.pop('AUDIO_WEBHOOK_TRANSCRIPTION_API_KEY', '')
+    api_key = os.environ.pop('AUDIO_WEBHOOK_TRANSCRIPTION_API_KEY', '')
     with AudioServer(('0.0.0.0', int(os.environ.get('AUDIO_WEBHOOK_PORT', '8081'))), Webhook) as server:
         server.authorization = b'Bearer ' + token.encode('ascii')
+        server.api_key = api_key
         server.conversation = f'audio-{name}'
         server.model = os.environ.get('AUDIO_WEBHOOK_TRANSCRIPTION_MODEL') or 'gpt-transcribe'
         print(f'audio webhook up on port {server.server_port}', flush=True)
